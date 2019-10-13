@@ -1,0 +1,47 @@
+PUT _template/environment
+{
+  "index_patterns": ["environment-*"],
+  "settings": {
+    "number_of_shards": 1
+  },
+  "mappings": {
+        "properties" : {
+            "@timestamp" : {
+                "type" : "date"
+            },
+            "@version" : {
+                "type" : "text",
+                "fields" : {
+                    "keyword" : {
+                    "type" : "keyword",
+                    "ignore_above" : 256
+                    }
+                }
+            },
+            "air_quality" : {
+                "type" : "integer"
+            },
+            "host" : {
+                "type" : "text",
+                "fields" : {
+                    "keyword" : {
+                    "type" : "keyword",
+                    "ignore_above" : 256
+                    }
+                }
+            },
+            "humidity" : {
+                "type" : "float"
+            },
+            "location" : {
+                "type" : "keyword"
+            },
+            "pressure" : {
+                "type" : "float"
+            },
+            "temperature" : {
+                "type" : "float"
+            }
+        }
+    }
+}
