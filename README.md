@@ -5,7 +5,7 @@
 <h4 align="center">With tools like Curator, ElastAlert for Alerting.</h4>
 <p align="center">
    <a>
-      <img src="https://img.shields.io/badge/Elastic%20Stack-7.4.0-blue?style=flat&logo=elasticsearch" alt="Elastic Stack Version 7^^">
+      <img src="https://img.shields.io/badge/Elastic%20Stack-7.6.0-blue?style=flat&logo=elasticsearch" alt="Elastic Stack Version 7^^">
    </a>
    <a>
       <img src="https://img.shields.io/github/v/tag/sherifabdlnaby/elastdocker?label=release&amp;sort=semver">
@@ -29,29 +29,31 @@ Elastic Stack (AKA **ELK**) Docker Composition, preconfigured with **Security**,
 
 Based on [Official Elastic Docker Images](https://www.docker.elastic.co/)
 
-Stack Version: [7.4.0](https://www.elastic.co/blog/elastic-stack-7-4-0-released).
+Stack Version: [7.6.0](https://www.elastic.co/blog/elastic-stack-7-6-0-released).
 > You can change Elastic Stack version by setting `ELK_VERSION` in `.env` file and rebuild your images. Any version >= 7.0.0 is compatible with this template.
 
 ### Main Points 📜
 
 - Configured as Production Single Node Cluster. (With a multi-node option for experimenting).
 - Security Enabled (under basic license).
-- SSL Enabled for Transport Layer.
+- SSL Enabled for Transport Layer and Kibana.
 - Use Docker-Compose and `.env` to configure your stack.
 - Automated Script that initializes and persist Elasticsearch's Keystore and SSL Certifications.
-- Curator Preconfigured for Automated Snapshotting (Need to setup S3 Repository).
+- Curator with Crond preconfigured for Automated Scheduled tasks (e.g Snapshots to S3).
 - Self-Monitoring Metrics Enabled.
 - Prometheus Exporters for Stack Metrics.
 - Filebeat instance for shipping Stack logs to Elasticsearch itself.
 - ElastAlert preconfigured for Alerting.
 - Embedded Container Healthchecks for Stack Images.
 
+More points at [comparison with deviantony/docker-elk](#Comparison)
+
 -----
 
 # Requirements 
 
 - [Docker 17.05 or higher](https://docs.docker.com/install/) 
-- [Docker-Compose 3 or higher](https://docs.docker.com/compose/install/) (optional) 
+- [Docker-Compose 3 or higher](https://docs.docker.com/compose/install/)
 
 # Setup
 
@@ -67,11 +69,13 @@ $ make elk
 ---- OR ----
 $ docker-compose up -d
 ```
-4. Visit Kibana at [localhost:5601](http://localhost:5601) 
+4. Visit Kibana at [https://localhost:5601](https://localhost:5601) 
 
 Username: `elastic` Password: `changeme` (or `ELASTIC_PASSWORD` value in `.env`)
 
 > Modify `.env` file for your needs, most importantly `ELASTIC_PASSWORD` that setup your superuser `elastic`'s password, `ELASTICSEARCH_HEAP` & `LOGSTASH_HEAP` for Elasticsearch & Logstash Heap Size and `ELK_VERSION` for, yk, Stack Version.
+
+> Notice that Kibana is configured to use HTTPS, so you'll need to write `https://` before `localhost:5601` in the browser.
 
 ### Additional Commands
 
@@ -123,7 +127,7 @@ By default, Virtual Memory [is not enough](https://www.elastic.co/guide/en/elast
 
 * Some Configuration are parameterized in the `.env` file.
   * `ELASTIC_PASSWORD`, user `elastic`'s password (default: `changeme` _pls_).
-  * `ELK_VERSION` Elastic Stack Version (default: `7.3.0`)
+  * `ELK_VERSION` Elastic Stack Version (default: `7.6.0`)
   * `ELASTICSEARCH_HEAP`, how much Elasticsearch allocate from memory (default: 1GB -good for development only-)
   * `LOGSTASH_HEAP`, how much Logstash allocate from memory.
   * Other configurations which their such as cluster name, and node name, etc.
@@ -146,16 +150,17 @@ make keystore
 
 ### Enable SSL on HTTP 
 
-By default, only transport layer has SSL Enabled, to enable SSL on Http layer, add the following lines to `elasticsearch.yml`
+By default, only Transport Layer has SSL Enabled, to enable SSL on HTTP layer, add the following lines to `elasticsearch.yml`
 ```yaml
 ## - http
 xpack.security.http.ssl.enabled: true
-xpack.security.http.ssl.verification_mode: certificate
-xpack.security.http.ssl.keystore.path: certs/elastic-certificates.p12
-xpack.security.http.ssl.truststore.path: certs/elastic-certificates.p12
+xpack.security.http.ssl.key: certs/elasticsearch.key
+xpack.security.http.ssl.certificate: certs/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: certs/ca.crt
+xpack.security.http.ssl.client_authentication: optional
 ```
 
-> Enabling SSL on HTTP layer will require all clients that connect to elasticsearch to configure SSL connection, this includes all current parts of the stack (e.g Logstash, Kibana, Curator, etc).
+> ⚠️ Enabling SSL on HTTP layer will require all clients that connect to Elasticsearch to configure SSL connection for HTTP, this includes all the current configured parts of the stack (e.g Logstash, Kibana, Curator, etc) plus any library/binding that connects to Elasticsearch from your application code.
 
 # Monitoring Cluster
 
@@ -177,6 +182,32 @@ Head to Stack Monitoring tab in Kibana to see cluster metrics for all stack comp
 
 > In Production, cluster metrics should be shipped to another dedicated monitoring cluster. 
 
+# Comparison
+
+One of the most popular elk on docker repositories is the awesome [deviantony/docker-elk](https://github.com/deviantony/docker-elk).
+Elastdocker differs from `deviantony/docker-elk` in the following points.
+
+- Security enabled by default using Basic license, not Trial.
+
+- Persisting data by default in a volume.
+
+- Run in Production Mode (by enabling SSL on Transport Layer, and add initial master node settings).
+
+- Persisting Generated Keystore, and create an extendable script that makes it easier to recreate it every-time the container is created.
+
+- Parameterize credentials in .env instead of hardcoding `elastich:changeme` in every component config.
+
+- Parameterize all other Config like Heap Size.
+
+- Add recommended environment configurations as Ulimits and Swap disable to the docker-compose.
+
+- Make it ready to be extended into a multinode cluster.
+
+- Configuring the Self-Monitoring and the Filebeat agent that ship ELK logs to ELK itself. (as a step to shipping it to a monitoring cluster in the future).
+
+- Configured tools and Prometheus Exporters.
+
+- The Makefile that simplifies everything into some simple commands.
   
 # License 
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/elastdocker/blob/master/LICENSE)
